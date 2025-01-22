@@ -1,0 +1,13 @@
+requests~=2.32.3
+websockets~=14.1
+fastapi~=0.115.6
+uvicorn~=0.34.0
+python-dotenv~=1.0.1
+pymilvus~=2.5.3
+torch~=2.5.1
+urllib3~=1.26.6
+sentence_transformers~=3.3.1
+openai~=1.55.2
+
+pydantic~=2.10.5
+sentence-transformers~=3.3.1
