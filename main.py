@@ -28,7 +28,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 PROMPT = """
 你是一个拥有记忆的人工智能助手，能够根据与用户聊天的记忆回复用户对于过去对话的问题的询问。
 任务描述：
-在给定的记忆搜索结果列表中，根据规则筛选出与用户询问最相关的一项获几项，并生成一条自然语言回复。如果没有匹配的结果，生成一条灵活的“未找到结果”的回复。
+在给定的记忆搜索结果列表中，根据规则筛选出与用户询问最相关的内容，并生成一条自然语言回复。如果没有匹配的结果，生成一条灵活的“未找到结果”的回复。
 单个记忆搜索结果的格式:
     {
         "similarity": 0.6265, # 表示与查询内容的相似度，值范围通常是 0.0 ~ 1.0（或其他计算度量方式）。
@@ -93,7 +93,7 @@ PROMPT = """
 class ChatInput(BaseModel):
     chat: str
     domain: str = "default"
-    time: int = datetime.now()
+    time: Optional[int] = None  # 可选的时间戳字段
 
 
 class SearchResult(BaseModel):
@@ -116,6 +116,7 @@ client = MilvusClient("milvus_demo.db")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
+        # client.drop_collection(collection_name="demo_collection")
         if not client.has_collection(collection_name="demo_collection"):
             client.create_collection(
                 collection_name="demo_collection",
@@ -144,6 +145,8 @@ async def add_chat(chat_input: ChatInput):
         docs = [chat_input.chat]
         vector = model.encode(docs)[0]
 
+        current_time = chat_input.time if chat_input.time else int(datetime.now().timestamp())
+
         # 获取当前数据量
         collection_stats = client.get_collection_stats(collection_name="demo_collection")
         size = collection_stats.get("row_count", 0)
@@ -153,13 +156,13 @@ async def add_chat(chat_input: ChatInput):
             "id": size,
             "vector": vector.tolist(),  # 添加向量数据
             "text": chat_input.chat,
-            "time": chat_input.time,
+            "time": current_time,
             "domain": chat_input.domain
         }]
 
         # 插入数据
         res = client.insert(collection_name="demo_collection", data=data)
-        return {"message": "添加成功", "result": len(res.items())}
+        return {"message": "添加成功", "id": res["ids"][0]}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
