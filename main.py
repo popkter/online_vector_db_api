@@ -1,13 +1,14 @@
 from datetime import datetime
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from contextlib import asynccontextmanager
 from fastapi.responses import StreamingResponse
 
 import torch
 from pymilvus import MilvusClient
 from sentence_transformers import SentenceTransformer
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
 
 from openai import OpenAI
 
@@ -105,7 +106,6 @@ class SearchResult(BaseModel):
 class SearchResponse(BaseModel):
     results: List[SearchResult]
 
-app = FastAPI()
 
 model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
 print("模型加载完成")
@@ -114,7 +114,7 @@ client = MilvusClient("milvus_demo.db")
 
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app: FastAPI):
     try:
         if not client.has_collection(collection_name="demo_collection"):
             client.create_collection(
@@ -130,6 +130,10 @@ async def lifespan():
     yield
 
     print("应用程序关闭，执行清理操作...")
+
+
+# 将 lifespan 添加到 FastAPI 应用
+app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/add_chat")
@@ -187,7 +191,7 @@ async def search_chat(query: str, limit: Optional[int] = 5):
             for item in results
         ]
 
-        print("查询结果:",search_results)
+        print("查询结果:", search_results)
 
         return StreamingResponse(analyze_chat(query, search_results), media_type="text/event-stream")
 
